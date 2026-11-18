@@ -173,6 +173,57 @@ export interface SetTagNodeConfig {
   next_node_key: string;
 }
 
+export type HttpFetchMethod = "GET" | "POST";
+export type HttpFetchBodyType = "json" | "form" | "text";
+
+export interface HttpFetchKeyValue {
+  key: string;
+  /** Template — may contain {{vars.x}} / {{contact.phone}} placeholders. */
+  value: string;
+}
+
+export interface HttpFetchHeader extends HttpFetchKeyValue {
+  /**
+   * When true the value is encrypted at rest (AES-256-GCM, same key as
+   * WhatsApp tokens) by PUT /api/flows/[id], returned to the editor as
+   * a mask sentinel, and decrypted only by the engine at call time.
+   */
+  secret?: boolean;
+}
+
+export interface HttpFetchResponseMapping {
+  /** flow_runs.vars key to write (same charset rule as collect_input). */
+  var_key: string;
+  /** Dot path into the JSON response, e.g. `data.order.status`, `items.0.name`. */
+  path: string;
+}
+
+/**
+ * "API request" node — calls an external HTTP endpoint (GET/POST),
+ * optionally copies fields of the JSON response into `flow_runs.vars`,
+ * then routes on the outcome. Auto-advancing: no customer input.
+ *
+ * Every templated string (url, params, header values, body) accepts
+ * `{{vars.<key>}}` and `{{contact.name|phone|email|company}}`; values
+ * are escaped for the slot they land in (see lib/flows/http-fetch.ts).
+ */
+export interface HttpFetchNodeConfig {
+  method: HttpFetchMethod;
+  url: string;
+  params?: HttpFetchKeyValue[];
+  headers?: HttpFetchHeader[];
+  /** POST only. */
+  body?: string;
+  body_type?: HttpFetchBodyType;
+  response_mappings?: HttpFetchResponseMapping[];
+  /** Optional var to receive the HTTP status code (e.g. "200"). */
+  status_var?: string;
+  /** Taken on a 2xx response. */
+  success_next: string;
+  /** Taken on non-2xx, timeout, network error, or a blocked destination. */
+  failure_next: string;
+}
+
 // Terminal nodes carry no config — they just stop the run.
 export type EndNodeConfig = Record<string, never>;
 
@@ -181,8 +232,8 @@ export type EndNodeConfig = Record<string, never>;
  * Add new node types here and the engine's switch will flag missing
  * cases via TypeScript's exhaustiveness check.
  *
- * v1.5+ additions (collect_input, condition, set_tag, http_fetch) will
- * extend this union — out-of-scope for the v1 engine PR.
+ * v1.5+ additions (collect_input, condition, set_tag, http_fetch)
+ * extend this union.
  */
 export type FlowNodeConfig =
   | { node_type: "start"; config: StartNodeConfig }
@@ -193,6 +244,7 @@ export type FlowNodeConfig =
   | { node_type: "collect_input"; config: CollectInputNodeConfig }
   | { node_type: "condition"; config: ConditionNodeConfig }
   | { node_type: "set_tag"; config: SetTagNodeConfig }
+  | { node_type: "http_fetch"; config: HttpFetchNodeConfig }
   | { node_type: "handoff"; config: HandoffNodeConfig }
   | { node_type: "end"; config: EndNodeConfig };
 
@@ -380,7 +432,15 @@ export const AUTO_ADVANCING_NODE_TYPES: ReadonlySet<string> = new Set([
   "send_media",
   "condition",
   "set_tag",
+  "http_fetch",
 ]);
+
+/**
+ * Cap on API-request nodes executed within one advance. The advance
+ * runs inside the webhook's `after()` (maxDuration 60s) and each call
+ * may take up to HTTP_FETCH_TIMEOUT_MS, so this bounds the worst case.
+ */
+export const MAX_HTTP_FETCH_PER_ADVANCE = 3;
 
 export const MAX_NODES_PER_ADVANCE = 25;
 

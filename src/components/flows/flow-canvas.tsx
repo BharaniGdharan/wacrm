@@ -119,15 +119,22 @@ const NODE_HEIGHT = 90;
 // ============================================================
 
 // Echo the design's green/red branch ports for the condition node's
-// true / false slots; every other slot inherits the node's own hue.
+// true / false slots (and the API request node's success / failure);
+// every other slot inherits the node's own hue.
 // The true/false hues are derived from the start (emerald) and handoff
 // (rose) node colors so all branch/port colors stay single-sourced in
 // NODE_HUE — a palette tweak there can't leave these stale.
 function slotColor(nodeType: NodeType, slotId: string, fallback: string) {
-  if (nodeType === 'condition' && slotId === 'true') {
+  if (
+    (nodeType === 'condition' && slotId === 'true') ||
+    (nodeType === 'http_fetch' && slotId === 'success')
+  ) {
     return nodeColors('start').solid;
   }
-  if (nodeType === 'condition' && slotId === 'false') {
+  if (
+    (nodeType === 'condition' && slotId === 'false') ||
+    (nodeType === 'http_fetch' && slotId === 'failure')
+  ) {
     return nodeColors('handoff').solid;
   }
   return fallback;
@@ -700,6 +707,7 @@ const ADD_NODE_TYPES: NodeType[] = [
   'collect_input',
   'condition',
   'set_tag',
+  'http_fetch',
   'handoff',
   'end',
 ];

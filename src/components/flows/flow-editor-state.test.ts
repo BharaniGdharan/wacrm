@@ -93,6 +93,7 @@ describe("defaultConfigFor", () => {
     "collect_input",
     "condition",
     "set_tag",
+    "http_fetch",
     "handoff",
     "end",
   ];
@@ -172,5 +173,20 @@ describe("appendNode", () => {
   it("does not pick a non-start node as entry", () => {
     const end = buildNewNode("end", []);
     expect(appendNode(baseState, end).entry_node_id).toBeNull();
+  });
+});
+
+describe("defaultConfigFor — http_fetch", () => {
+  it("defaults to a GET with JSON body type and empty branches", () => {
+    expect(defaultConfigFor("http_fetch")).toMatchObject({
+      method: "GET",
+      url: "",
+      body_type: "json",
+      params: [],
+      headers: [],
+      response_mappings: [],
+      success_next: "",
+      failure_next: "",
+    });
   });
 });

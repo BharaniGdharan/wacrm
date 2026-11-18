@@ -1502,7 +1502,55 @@
         "uploadFailed": "Error al subir.",
         "fileTooLarge": "El archivo pesa {size} MB; el límite es 16 MB.",
         "defaultOptionTitle": "Opción",
-        "optionN": "Opción {n}"
+        "optionN": "Opción {n}",
+        "http": {
+          "requestTitle": "Solicitud",
+          "importCurl": "Importar desde cURL",
+          "methodLabel": "Método",
+          "urlLabel": "URL",
+          "placeholderHelp": "Los marcadores funcionan en la URL, los parámetros, los encabezados y el cuerpo, y los valores se escapan automáticamente. Haz clic en uno para copiarlo:",
+          "copyPlaceholder": "Copiar",
+          "copied": "Copiado {value}",
+          "paramsTitle": "Parámetros de consulta",
+          "addParam": "Añadir parámetro",
+          "paramKeyPlaceholder": "nombre",
+          "headersTitle": "Encabezados",
+          "headerKeyPlaceholder": "Nombre del encabezado",
+          "headerValuePlaceholder": "Valor",
+          "secretValuePlaceholder": "Valor secreto",
+          "secretToggle": "Secreto",
+          "storedSecurely": "Guardado de forma segura",
+          "replaceSecret": "Reemplazar",
+          "addHeader": "Añadir encabezado",
+          "remove": "Quitar",
+          "secretHelp": "Activa Secreto para claves de API y tokens. El valor se cifra al guardar el flujo y no se vuelve a mostrar.",
+          "bodyTitle": "Cuerpo",
+          "bodyJson": "JSON",
+          "bodyForm": "Formulario",
+          "bodyText": "Texto",
+          "responseTitle": "Guardar de la respuesta",
+          "responseHelp": "Copia campos de la respuesta JSON en variables (ruta JSON → nombre de variable). Los pasos siguientes pueden usar esas variables.",
+          "mappingVarPlaceholder": "nombre_variable",
+          "addMapping": "Añadir campo",
+          "statusVarLabel": "Guardar el código de estado HTTP en una variable (opcional)",
+          "onSuccess": "Si tiene éxito (2xx), avanzar a",
+          "onFailure": "Si falla, avanzar a",
+          "failureHelp": "Se considera fallo un código de error, un tiempo de espera agotado (8 segundos), una redirección o una dirección privada bloqueada.",
+          "curlTitle": "Importar desde cURL",
+          "curlDescription": "Pega un comando cURL, por ejemplo de la documentación de la API o de “Copiar como cURL” en tu navegador. Se rellenan el método, la URL, los parámetros, los encabezados y el cuerpo.",
+          "curlReplaceHint": "Después de importar, reemplaza los valores fijos por marcadores (variables o campos del contacto).",
+          "curlImportButton": "Importar",
+          "cancel": "Cancelar",
+          "curlImported": "Solicitud importada desde cURL",
+          "curlErrorNoUrl": "No se encontró ninguna URL en el comando.",
+          "curlErrorQuote": "El comando tiene una comilla sin cerrar.",
+          "curlErrorEmpty": "Primero pega un comando cURL.",
+          "curlWarnMethod": "{method} no es compatible (solo GET y POST). Revisa el método.",
+          "curlWarnMultipart": "La subida de archivos (-F) no es compatible y se omitió.",
+          "curlWarnIgnored": "Opción ignorada: {option}.",
+          "curlWarnDropped": "Encabezados del navegador eliminados: {headers}.",
+          "curlWarnMultipleUrls": "Se encontraron varias URL; se usó la primera."
+        }
       },
       "categories": {
         "messaging": "Mensajería",
@@ -1549,6 +1597,10 @@
         "end": {
           "label": "Fin",
           "blurb": "Termina el flujo"
+        },
+        "http_fetch": {
+          "label": "Solicitud a API",
+          "blurb": "Llama a una API y guarda la respuesta"
         }
       }
     },
@@ -1589,7 +1641,8 @@
       "modeAdd": "Agregar",
       "modeRemove": "Quitar",
       "tagPicked": "{mode} etiqueta {tag}…",
-      "tagNone": "{mode} etiqueta (ninguna elegida)"
+      "tagNone": "{mode} etiqueta (ninguna elegida)",
+      "httpSaves": "{base} → {count, plural, =1 {# variable} other {# variables}}"
     },
     "header": {
       "backToFlows": "Volver a flujos",
@@ -2689,7 +2742,18 @@
       "setTagNeedsTag": "El nodo Etiquetar contacto necesita una etiqueta para aplicar.",
       "setTagNeedsNext": "El nodo Etiquetar contacto debe apuntar a un nodo siguiente.",
       "setTagMissingNext": "El nodo Etiquetar contacto apunta a un nodo inexistente: \"{key}\".",
-      "unknownNodeType": "Tipo de nodo desconocido: \"{type}\"."
+      "unknownNodeType": "Tipo de nodo desconocido: \"{type}\".",
+      "httpNeedsMethod": "La solicitud a API necesita un método (GET o POST).",
+      "httpNeedsUrl": "La solicitud a API necesita una URL.",
+      "httpInvalidUrl": "La URL de la solicitud debe empezar por http:// o https://.",
+      "httpHeaderNeedsName": "El encabezado {n} tiene un valor pero no un nombre.",
+      "httpInvalidHeaderName": "El nombre de encabezado \"{name}\" contiene caracteres no válidos.",
+      "httpInvalidBodyType": "El tipo de cuerpo debe ser JSON, Formulario o Texto.",
+      "httpBodyNotJson": "El cuerpo no es un JSON válido. Revisa las comillas y las comas (los marcadores se tratan como texto).",
+      "httpMappingNeedsVar": "El campo de respuesta {n} necesita un nombre de variable.",
+      "httpMappingNeedsPath": "El campo de respuesta {n} necesita una ruta JSON.",
+      "httpNeedsBranch": "La solicitud a API necesita un nodo para la rama \"{branch}\".",
+      "httpMissingBranch": "La rama \"{branch}\" de la solicitud a API apunta al nodo inexistente \"{key}\"."
     },
     "automations": {
       "needsStep": "las automatizaciones activas necesitan al menos un paso",

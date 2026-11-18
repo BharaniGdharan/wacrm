@@ -668,3 +668,98 @@ describe("auto-advancing chain length", () => {
     ]);
   });
 });
+
+describe("validateFlowForActivation — http_fetch (API request)", () => {
+  const flowWithHttp = (config: Record<string, unknown>) => [
+    { node_key: "start", node_type: "start", config: { next_node_key: "api" } },
+    {
+      node_key: "api",
+      node_type: "http_fetch",
+      config: {
+        method: "GET",
+        url: "https://api.example.com/orders/{{vars.order_id}}",
+        success_next: "ok",
+        failure_next: "ho",
+        ...config,
+      },
+    },
+    { node_key: "ok", node_type: "send_message", config: { text: "Status: {{vars.s}}", next_node_key: "ho" } },
+    { node_key: "ho", node_type: "handoff", config: {} },
+  ];
+  // Only the API node's own issues — broken branches also make the
+  // downstream nodes "unreachable", which is covered elsewhere.
+  const fields = (config: Record<string, unknown>) =>
+    validateFlowForActivation(validFlow, flowWithHttp(config))
+      .filter((i) => i.node_key === "api")
+      .map((i) => `${i.severity}:${i.field}`);
+
+  it("accepts a well-formed GET with placeholders, headers and mappings", () => {
+    expect(
+      fields({
+        params: [{ key: "phone", value: "{{contact.phone}}" }],
+        headers: [{ key: "Authorization", value: "enc:v1:abc", secret: true }],
+        response_mappings: [{ var_key: "s", path: "data.status" }],
+        status_var: "code",
+      }),
+    ).toEqual([]);
+  });
+
+  it("requires a valid method, an http(s) URL and both branches", () => {
+    expect(fields({ method: "PUT", url: "", success_next: "", failure_next: "nope" })).toEqual([
+      "error:method",
+      "error:url",
+      "error:success_next",
+      "error:failure_next",
+    ]);
+    expect(fields({ url: "ftp://files.example.com/x" })).toEqual(["error:url"]);
+    expect(fields({ url: "{{vars.base_url}}" })).toEqual(["error:url"]);
+  });
+
+  it("checks header names, mapping var keys/paths and status_var", () => {
+    expect(
+      fields({
+        headers: [
+          { key: "", value: "orphan" },
+          { key: "Bad Header", value: "x" },
+          { key: "", value: "" },
+        ],
+        response_mappings: [
+          { var_key: "", path: "a" },
+          { var_key: "1bad", path: "" },
+        ],
+        status_var: "has space",
+      }),
+    ).toEqual([
+      "error:headers.0.key",
+      "error:headers.1.key",
+      "error:response_mappings.0.var_key",
+      "error:response_mappings.1.var_key",
+      "error:response_mappings.1.path",
+      "error:status_var",
+    ]);
+  });
+
+  it("warns (not errors) on a POST JSON body that isn't valid JSON", () => {
+    expect(fields({ method: "POST", body: '{"a": "{{vars.x}}"}' })).toEqual([]);
+    expect(fields({ method: "POST", body: "{a: 1}" })).toEqual(["warning:body"]);
+    expect(fields({ method: "POST", body_type: "text", body: "{a: 1}" })).toEqual([]);
+    expect(fields({ method: "POST", body_type: "xml" })).toEqual(["error:body_type"]);
+  });
+
+  it("follows success/failure for reachability", () => {
+    expect(reachableFromEntry("start", flowWithHttp({}))).toEqual(new Set(["start", "api", "ok", "ho"]));
+  });
+
+  it("counts as auto-advancing, so an API loop is rejected as a cycle", () => {
+    const loop = [
+      { node_key: "start", node_type: "start", config: { next_node_key: "api" } },
+      {
+        node_key: "api",
+        node_type: "http_fetch",
+        config: { method: "GET", url: "https://x.io", success_next: "api", failure_next: "ho" },
+      },
+      { node_key: "ho", node_type: "handoff", config: {} },
+    ];
+    expect(findAutoAdvancingCycles(loop)).toEqual([["api"]]);
+  });
+});

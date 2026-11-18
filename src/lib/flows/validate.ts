@@ -26,6 +26,7 @@
 import { INTERACTIVE_LIMITS } from "@/lib/whatsapp/meta-api";
 import { getT } from "@/lib/i18n/translate";
 import { AUTO_ADVANCING_NODE_TYPES, MAX_AUTO_ADVANCING_CHAIN } from "./types";
+import { HEADER_NAME_RE, VAR_KEY_RE, stripPlaceholders } from "./http-placeholders";
 
 const t = getT("Validation.flows");
 
@@ -823,6 +824,85 @@ function validateNode(
       break;
     }
 
+    case "http_fetch": {
+      const cfg = node.config as {
+        method?: string;
+        url?: string;
+        headers?: Array<{ key?: string; value?: string; secret?: boolean }>;
+        body?: string;
+        body_type?: string;
+        response_mappings?: Array<{ var_key?: string; path?: string }>;
+        status_var?: string;
+        success_next?: string;
+        failure_next?: string;
+      };
+      const issue = (field: string, message: string, severity: "error" | "warning" = "error") =>
+        issues.push({ severity, scope: "node", node_key: node.node_key, field, message });
+
+      if (cfg.method !== "GET" && cfg.method !== "POST") {
+        issue("method", t("httpNeedsMethod"));
+      }
+      const url = (cfg.url ?? "").trim();
+      if (!url) {
+        issue("url", t("httpNeedsUrl"));
+      } else {
+        let parsed: URL | null = null;
+        try {
+          parsed = new URL(stripPlaceholders(url));
+        } catch {
+          parsed = null;
+        }
+        if (!parsed || (parsed.protocol !== "http:" && parsed.protocol !== "https:")) {
+          issue("url", t("httpInvalidUrl"));
+        }
+      }
+      (cfg.headers ?? []).forEach((h, i) => {
+        const key = (h.key ?? "").trim();
+        if (!key) {
+          if ((h.value ?? "").trim()) issue(`headers.${i}.key`, t("httpHeaderNeedsName", { n: i + 1 }));
+        } else if (!HEADER_NAME_RE.test(key)) {
+          issue(`headers.${i}.key`, t("httpInvalidHeaderName", { name: key }));
+        }
+      });
+      if (cfg.method === "POST") {
+        const bodyType = cfg.body_type ?? "json";
+        if (!["json", "form", "text"].includes(bodyType)) {
+          issue("body_type", t("httpInvalidBodyType"));
+        } else if (bodyType === "json" && (cfg.body ?? "").trim()) {
+          try {
+            JSON.parse(stripPlaceholders(cfg.body ?? ""));
+          } catch {
+            issue("body", t("httpBodyNotJson"), "warning");
+          }
+        }
+      }
+      (cfg.response_mappings ?? []).forEach((m, i) => {
+        const key = (m.var_key ?? "").trim();
+        if (!key) {
+          issue(`response_mappings.${i}.var_key`, t("httpMappingNeedsVar", { n: i + 1 }));
+        } else if (!VAR_KEY_RE.test(key)) {
+          issue(`response_mappings.${i}.var_key`, t("invalidVarKey", { key }));
+        }
+        if (!(m.path ?? "").trim()) {
+          issue(`response_mappings.${i}.path`, t("httpMappingNeedsPath", { n: i + 1 }));
+        }
+      });
+      const statusVar = (cfg.status_var ?? "").trim();
+      if (statusVar && !VAR_KEY_RE.test(statusVar)) {
+        issue("status_var", t("invalidVarKey", { key: statusVar }));
+      }
+      for (const branch of ["success_next", "failure_next"] as const) {
+        const key = cfg[branch];
+        const label = branch === "success_next" ? "success" : "failure";
+        if (!key) {
+          issue(branch, t("httpNeedsBranch", { branch: label }));
+        } else if (!knownKeys.has(key)) {
+          issue(branch, t("httpMissingBranch", { branch: label, key }));
+        }
+      }
+      break;
+    }
+
     case "handoff":
     case "end":
       // Terminal nodes have no outgoing edges; nothing to validate
@@ -885,6 +965,16 @@ function outgoingEdges(node: NodeInput): string[] {
       const out: string[] = [];
       if (cfg.true_next) out.push(cfg.true_next);
       if (cfg.false_next) out.push(cfg.false_next);
+      return out;
+    }
+    case "http_fetch": {
+      const cfg = node.config as {
+        success_next?: string;
+        failure_next?: string;
+      };
+      const out: string[] = [];
+      if (cfg.success_next) out.push(cfg.success_next);
+      if (cfg.failure_next) out.push(cfg.failure_next);
       return out;
     }
     case "send_buttons": {

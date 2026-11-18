@@ -589,3 +589,37 @@ describe("unlinkNodeReferences", () => {
     expect(after[1]).toBe(nodes[1]);
   });
 });
+
+describe("http_fetch (API request) success/failure branches", () => {
+  const api: BuilderNode = {
+    node_key: "api",
+    node_type: "http_fetch",
+    config: { method: "GET", url: "https://x.io", success_next: "ok", failure_next: "bad" },
+  };
+  const ok: BuilderNode = { node_key: "ok", node_type: "end", config: {} };
+  const bad: BuilderNode = { node_key: "bad", node_type: "handoff", config: {} };
+
+  it("derives labelled success and failure edges", () => {
+    expect(deriveCanvasEdges(nodes(api, ok, bad))).toEqual([
+      { id: "api--success--ok", source: "api", target: "ok", sourceHandle: "success", label: "success" },
+      { id: "api--failure--bad", source: "api", target: "bad", sourceHandle: "failure", label: "failure" },
+    ]);
+  });
+
+  it("exposes success/failure slots", () => {
+    expect(outgoingSlots(api).map((s) => s.id)).toEqual(["success", "failure"]);
+  });
+
+  it("patches the dragged branch only", () => {
+    expect(applyEdgeConnection(api, "success", "x")).toEqual({ success_next: "x" });
+    expect(applyEdgeConnection(api, "failure", "y")).toEqual({ failure_next: "y" });
+    expect(applyEdgeConnection(api, "next", "z")).toBeNull();
+  });
+
+  it("clears references to a deleted node", () => {
+    const [patched] = unlinkNodeReferences([api], "bad");
+    expect(patched.config).toMatchObject({ success_next: "ok", failure_next: "" });
+    const [untouched] = unlinkNodeReferences([api], "other");
+    expect(untouched).toBe(api);
+  });
+});

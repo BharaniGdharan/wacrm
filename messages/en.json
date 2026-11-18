@@ -1502,7 +1502,55 @@
         "uploadFailed": "Upload failed.",
         "fileTooLarge": "File is {size} MB — limit is 16 MB.",
         "defaultOptionTitle": "Option",
-        "optionN": "Option {n}"
+        "optionN": "Option {n}",
+        "http": {
+          "requestTitle": "Request",
+          "importCurl": "Import from cURL",
+          "methodLabel": "Method",
+          "urlLabel": "URL",
+          "placeholderHelp": "Placeholders work in the URL, parameters, headers and body, and values are escaped automatically. Click one to copy it:",
+          "copyPlaceholder": "Copy",
+          "copied": "Copied {value}",
+          "paramsTitle": "Query parameters",
+          "addParam": "Add parameter",
+          "paramKeyPlaceholder": "name",
+          "headersTitle": "Headers",
+          "headerKeyPlaceholder": "Header name",
+          "headerValuePlaceholder": "Value",
+          "secretValuePlaceholder": "Secret value",
+          "secretToggle": "Secret",
+          "storedSecurely": "Stored securely",
+          "replaceSecret": "Replace",
+          "addHeader": "Add header",
+          "remove": "Remove",
+          "secretHelp": "Turn on Secret for API keys and tokens. The value is encrypted when you save the flow and is never shown again.",
+          "bodyTitle": "Body",
+          "bodyJson": "JSON",
+          "bodyForm": "Form",
+          "bodyText": "Text",
+          "responseTitle": "Save from response",
+          "responseHelp": "Copy fields from the JSON response into variables (JSON path → variable name). Later steps can use those variables.",
+          "mappingVarPlaceholder": "variable_name",
+          "addMapping": "Add field",
+          "statusVarLabel": "Save the HTTP status code to a variable (optional)",
+          "onSuccess": "On success (2xx), advance to",
+          "onFailure": "On failure, advance to",
+          "failureHelp": "Failure means an error status code, a timeout (8 seconds), a redirect, or a blocked private address.",
+          "curlTitle": "Import from cURL",
+          "curlDescription": "Paste a cURL command, for example from API docs or your browser's “Copy as cURL”. The method, URL, parameters, headers and body are filled in for you.",
+          "curlReplaceHint": "After importing, replace fixed values with placeholders (variables or contact fields).",
+          "curlImportButton": "Import",
+          "cancel": "Cancel",
+          "curlImported": "Request imported from cURL",
+          "curlErrorNoUrl": "No URL found in the command.",
+          "curlErrorQuote": "The command has an unclosed quote.",
+          "curlErrorEmpty": "Paste a cURL command first.",
+          "curlWarnMethod": "{method} isn't supported (only GET and POST). Check the method.",
+          "curlWarnMultipart": "File uploads (-F) aren't supported and were skipped.",
+          "curlWarnIgnored": "Ignored option {option}.",
+          "curlWarnDropped": "Removed browser headers: {headers}.",
+          "curlWarnMultipleUrls": "Several URLs found; the first one was used."
+        }
       },
       "categories": {
         "messaging": "Messaging",
@@ -1549,6 +1597,10 @@
         "end": {
           "label": "End",
           "blurb": "Ends the flow"
+        },
+        "http_fetch": {
+          "label": "API request",
+          "blurb": "Calls an API, saves the response"
         }
       }
     },
@@ -1589,7 +1641,8 @@
       "modeAdd": "Add",
       "modeRemove": "Remove",
       "tagPicked": "{mode} tag {tag}…",
-      "tagNone": "{mode} tag (none picked)"
+      "tagNone": "{mode} tag (none picked)",
+      "httpSaves": "{base} → {count, plural, =1 {# var} other {# vars}}"
     },
     "header": {
       "backToFlows": "Back to Flows",
@@ -2689,7 +2742,18 @@
       "setTagNeedsTag": "Set-tag needs a tag to apply.",
       "setTagNeedsNext": "Set-tag must point to a next node.",
       "setTagMissingNext": "Set-tag points to non-existent node \"{key}\".",
-      "unknownNodeType": "Unknown node type \"{type}\"."
+      "unknownNodeType": "Unknown node type \"{type}\".",
+      "httpNeedsMethod": "API request needs a method (GET or POST).",
+      "httpNeedsUrl": "API request needs a URL.",
+      "httpInvalidUrl": "API request URL must start with http:// or https://.",
+      "httpHeaderNeedsName": "Header {n} has a value but no name.",
+      "httpInvalidHeaderName": "Header name \"{name}\" contains invalid characters.",
+      "httpInvalidBodyType": "Body type must be JSON, Form or Text.",
+      "httpBodyNotJson": "The body isn't valid JSON. Check quotes and commas (placeholders are treated as text).",
+      "httpMappingNeedsVar": "Response field {n} needs a variable name.",
+      "httpMappingNeedsPath": "Response field {n} needs a JSON path.",
+      "httpNeedsBranch": "API request needs a node for the \"{branch}\" branch.",
+      "httpMissingBranch": "API request's \"{branch}\" branch points to non-existent node \"{key}\"."
     },
     "automations": {
       "needsStep": "active automations need at least one step",

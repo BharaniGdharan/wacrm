@@ -44,6 +44,13 @@ import { addContactTagAndDispatch } from "@/lib/contacts/tag-events";
 import { removeContactTag } from "@/lib/contacts/tag-write";
 import { checkRunTimeout, markRunTimedOut, type RunTimeoutCheck } from "./timeout";
 import {
+  executeHttpFetch,
+  type HttpFetchOutcome,
+  type HttpTemplateContext,
+} from "./http-fetch";
+import { openSecretHeader } from "./http-secrets";
+import { decrypt } from "@/lib/whatsapp/encryption";
+import {
   type CollectInputNodeConfig,
   type ConditionNodeConfig,
   type DispatchInboundInput,
@@ -51,6 +58,7 @@ import {
   type FlowNodeRow,
   type FlowRow,
   type FlowRunRow,
+  type HttpFetchNodeConfig,
   type ParsedInbound,
   type SendButtonsNodeConfig,
   type SendListNodeConfig,
@@ -60,6 +68,7 @@ import {
   type StartNodeConfig,
   type KeywordTriggerConfig,
   AUTO_ADVANCING_NODE_TYPES,
+  MAX_HTTP_FETCH_PER_ADVANCE,
   MAX_NODES_PER_ADVANCE,
 } from "./types";
 
@@ -600,6 +609,82 @@ function interpolateOptionalVars(
     : interpolateVars(template, vars);
 }
 
+/**
+ * Contact fields exposed to API-request templates ({{contact.phone}}
+ * etc.). Loaded at most once per advance, only when an http_fetch node
+ * actually runs. A missing contact just renders empty placeholders.
+ */
+async function loadTemplateContact(
+  db: AdminClient,
+  contactId: string | null,
+): Promise<HttpTemplateContext["contact"]> {
+  if (!contactId) return null;
+  const { data } = await db
+    .from("contacts")
+    .select("name, phone, email, company")
+    .eq("id", contactId)
+    .maybeSingle();
+  return (data as HttpTemplateContext["contact"]) ?? null;
+}
+
+/**
+ * Run one http_fetch node: perform the request (or refuse past the
+ * per-advance cap), persist any var changes onto the run, log the
+ * outcome WITHOUT response bodies or header values, and return the
+ * node_key to continue at. Never throws — failure routes to
+ * `failure_next` so the author decides what the customer sees.
+ */
+async function runHttpFetchNode(
+  db: AdminClient,
+  run: FlowRunRow,
+  node: FlowNodeRow,
+  callIndex: number,
+  getContact: () => Promise<HttpTemplateContext["contact"]>,
+): Promise<string> {
+  const cfg = node.config as unknown as HttpFetchNodeConfig;
+  let outcome: HttpFetchOutcome;
+  if (callIndex > MAX_HTTP_FETCH_PER_ADVANCE) {
+    outcome = { ok: false, reason: "call_limit", durationMs: 0, vars: run.vars };
+  } else {
+    outcome = await executeHttpFetch(
+      cfg,
+      { vars: run.vars, contact: await getContact() },
+      { resolveSecret: (stored) => openSecretHeader(stored, decrypt) },
+    );
+  }
+
+  if (JSON.stringify(outcome.vars) !== JSON.stringify(run.vars)) {
+    run.vars = outcome.vars;
+    await db
+      .from("flow_runs")
+      .update({ vars: run.vars })
+      .eq("id", run.id)
+      .eq("status", "active");
+  }
+
+  if (outcome.ok) {
+    await logEvent(db, run.id, "node_entered", node.node_key, {
+      node_type: "http_fetch",
+      http_status: outcome.status,
+      duration_ms: outcome.durationMs,
+      branch: "success",
+      advancing_to: cfg.success_next,
+      ...(outcome.truncated ? { response_truncated: true } : {}),
+    });
+    return cfg.success_next;
+  }
+  await logEvent(db, run.id, "error", node.node_key, {
+    reason: "http_fetch_failed",
+    failure: outcome.reason,
+    ...(outcome.status !== undefined ? { http_status: outcome.status } : {}),
+    ...(outcome.detail ? { detail: outcome.detail } : {}),
+    duration_ms: outcome.durationMs,
+    branch: "failure",
+    advancing_to: cfg.failure_next,
+  });
+  return cfg.failure_next;
+}
+
 async function endRun(
   db: AdminClient,
   runId: string,
@@ -631,6 +716,14 @@ async function advanceFromNodeKey(
   nodes: Map<string, FlowNodeRow>,
 ): Promise<{ outcome: "advanced" | "completed" | "handed_off" }> {
   let currentKey: string | null = startNodeKey;
+  let httpCalls = 0;
+  let contactCache: HttpTemplateContext["contact"] | undefined;
+  const getContact = async () => {
+    if (contactCache === undefined) {
+      contactCache = await loadTemplateContact(db, run.contact_id);
+    }
+    return contactCache;
+  };
   for (let safety = 0; safety < MAX_NODES_PER_ADVANCE; safety += 1) {
     if (!currentKey) {
       await logEvent(db, run.id, "error", null, {
@@ -812,6 +905,11 @@ async function advanceFromNodeKey(
         });
       }
       currentKey = cfg.next_node_key;
+      continue;
+    }
+    if (node.node_type === "http_fetch") {
+      httpCalls += 1;
+      currentKey = await runHttpFetchNode(db, run, node, httpCalls, getContact);
       continue;
     }
     if (node.node_type === "send_buttons") {

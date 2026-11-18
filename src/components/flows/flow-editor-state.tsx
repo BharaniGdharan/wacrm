@@ -204,6 +204,19 @@ export function defaultConfigFor(type: NodeType): Record<string, unknown> {
       };
     case "set_tag":
       return { mode: "add", tag_id: "", next_node_key: "" };
+    case "http_fetch":
+      return {
+        method: "GET",
+        url: "",
+        params: [],
+        headers: [],
+        body: "",
+        body_type: "json",
+        response_mappings: [],
+        status_var: "",
+        success_next: "",
+        failure_next: "",
+      };
     case "handoff":
       return { note: "" };
     case "end":

@@ -20,6 +20,7 @@
  *   - `button:<reply_id>` for send_buttons rows
  *   - `row:<reply_id>`    for send_list rows
  *   - `true` / `false`    for condition branches
+ *   - `success` / `failure` for http_fetch (API request) outcomes
  */
 
 import type { BuilderNode } from "@/components/flows/shared";
@@ -80,6 +81,30 @@ export function deriveCanvasEdges(nodes: BuilderNode[]): CanvasEdge[] {
             target: falseNext,
             sourceHandle: "false",
             label: "false",
+          });
+        }
+        break;
+      }
+
+      case "http_fetch": {
+        const successNext = (cfg as { success_next?: string }).success_next;
+        const failureNext = (cfg as { failure_next?: string }).failure_next;
+        if (successNext && knownKeys.has(successNext)) {
+          edges.push({
+            id: `${node.node_key}--success--${successNext}`,
+            source: node.node_key,
+            target: successNext,
+            sourceHandle: "success",
+            label: "success",
+          });
+        }
+        if (failureNext && knownKeys.has(failureNext)) {
+          edges.push({
+            id: `${node.node_key}--failure--${failureNext}`,
+            source: node.node_key,
+            target: failureNext,
+            sourceHandle: "failure",
+            label: "failure",
           });
         }
         break;
@@ -187,6 +212,12 @@ export function outgoingSlots(node: BuilderNode): OutgoingSlot[] {
         { id: "false", label: "false" },
       ];
 
+    case "http_fetch":
+      return [
+        { id: "success", label: "success" },
+        { id: "failure", label: "failure" },
+      ];
+
     case "send_buttons": {
       const buttons = Array.isArray((cfg as { buttons?: unknown }).buttons)
         ? ((cfg as { buttons: Array<Record<string, unknown>> }).buttons)
@@ -261,6 +292,11 @@ export function applyEdgeConnection(
       if (sourceHandle === "false") return { false_next: targetKey };
       return null;
 
+    case "http_fetch":
+      if (sourceHandle === "success") return { success_next: targetKey };
+      if (sourceHandle === "failure") return { failure_next: targetKey };
+      return null;
+
     case "send_buttons": {
       if (!sourceHandle.startsWith("button:")) return null;
       const replyId = sourceHandle.slice("button:".length);
@@ -318,7 +354,7 @@ export function applyEdgeConnection(
 
 /**
  * Walk every node and clear any `next_node_key` / `true_next` /
- * `false_next` / `button.next_node_key` / `row.next_node_key`
+ * `false_next` / `success_next` / `failure_next` / `button.next_node_key` / `row.next_node_key`
  * reference to `deletedKey`. Cleared refs become the empty string —
  * the same "no target picked" sentinel the builder forms use.
  *
@@ -361,6 +397,18 @@ function patchedConfigWithoutKey(
         ...cfg,
         ...(trueMatch ? { true_next: "" } : {}),
         ...(falseMatch ? { false_next: "" } : {}),
+      };
+    }
+
+    case "http_fetch": {
+      const c = cfg as { success_next?: string; failure_next?: string };
+      const successMatch = c.success_next === deletedKey;
+      const failureMatch = c.failure_next === deletedKey;
+      if (!successMatch && !failureMatch) return null;
+      return {
+        ...cfg,
+        ...(successMatch ? { success_next: "" } : {}),
+        ...(failureMatch ? { failure_next: "" } : {}),
       };
     }
 

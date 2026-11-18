@@ -3,7 +3,7 @@
 /**
  * Per-node configuration form, dispatched by node_type.
  *
- * One component, ten branches. Each branch renders the inputs that
+ * One component, eleven branches. Each branch renders the inputs that
  * map onto the node's `config` JSONB shape (text + buttons for
  * send_buttons, prompt + var_key for collect_input, etc.) and forwards
  * edits up via `onUpdateConfig`.
@@ -49,6 +49,7 @@ import { cn } from "@/lib/utils";
 import { uploadAccountMedia, MEDIA_MAX_BYTES } from "@/lib/storage/upload-media";
 import { slugify, type BuilderNode } from "../shared";
 import { NextNodeRow, NodeKeySelect, TextRow } from "./fields";
+import { HttpFetchForm, type HttpFetchCfg } from "./http-fetch-form";
 
 interface NodeConfigFormProps {
   node: BuilderNode;
@@ -193,6 +194,16 @@ export function NodeConfigForm({
           currentKey={node.node_key}
           onUpdateConfig={onUpdateConfig}
           t={t}
+        />
+      );
+
+    case "http_fetch":
+      return (
+        <HttpFetchForm
+          cfg={cfg as HttpFetchCfg}
+          allNodes={allNodes}
+          currentKey={node.node_key}
+          onUpdateConfig={onUpdateConfig}
         />
       );
 

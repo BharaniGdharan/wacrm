@@ -27,7 +27,9 @@ vi.mock('@/lib/supabase/server', async () => {
   }
 })
 
-import { PUT } from './route'
+import { GET, PUT } from './route'
+import { SECRET_MASK } from '@/lib/flows/http-secrets'
+import { decrypt } from '@/lib/whatsapp/encryption'
 
 const VALID_NODES = [
   { node_key: 'start', node_type: 'start', config: { next_node_key: 'bye' } },
@@ -143,5 +145,60 @@ describe('PUT /api/flows/[id]', () => {
     const res = await put({ fallback_policy: { on_timeout_hours: 48 } })
     expect(res.status).toBe(200)
     expect(h.tables.flows[0]).toMatchObject({ fallback_policy: { on_timeout_hours: 48 } })
+  })
+})
+
+describe('API request secret headers', () => {
+  const apiNodes = (headerValue: string) => [
+    { node_key: 'start', node_type: 'start', config: { next_node_key: 'api' } },
+    {
+      node_key: 'api',
+      node_type: 'http_fetch',
+      config: {
+        method: 'GET',
+        url: 'https://api.example.com/x',
+        headers: [
+          { key: 'Authorization', value: headerValue, secret: true },
+          { key: 'Accept', value: 'application/json' },
+        ],
+        success_next: 'bye',
+        failure_next: 'bye',
+      },
+    },
+    { node_key: 'bye', node_type: 'end', config: {} },
+  ]
+  const sentHeaders = () => {
+    const call = h.rpc.mock.calls.at(-1) as unknown as [string, { p_nodes: Array<{ config: { headers?: Array<{ value: string }> } }> }]
+    return call[1].p_nodes[1].config.headers!
+  }
+
+  it('encrypts a new secret before it reaches the database', async () => {
+    seed('draft')
+    const res = await put({ nodes: apiNodes('Bearer s3cr3t') })
+    expect(res.status).toBe(200)
+    const [auth, accept] = sentHeaders()
+    expect(auth.value.startsWith('enc:v1:')).toBe(true)
+    expect(auth.value).not.toContain('s3cr3t')
+    expect(decrypt(auth.value.slice('enc:v1:'.length))).toBe('Bearer s3cr3t')
+    expect(accept.value).toBe('application/json')
+  })
+
+  it('keeps the stored ciphertext when the editor sends the mask back', async () => {
+    seed('draft')
+    h.tables.flow_nodes = apiNodes('enc:v1:STORED').map((n) => ({ ...n, flow_id: 'flow-1' }))
+    await put({ nodes: apiNodes(SECRET_MASK) })
+    expect(sentHeaders()[0].value).toBe('enc:v1:STORED')
+  })
+
+  it('masks secrets on GET', async () => {
+    seed('draft')
+    h.tables.flow_nodes = apiNodes('enc:v1:STORED').map((n) => ({ ...n, flow_id: 'flow-1' }))
+    const res = await GET(new Request('http://localhost/api/flows/flow-1'), {
+      params: Promise.resolve({ id: 'flow-1' }),
+    })
+    const json = await res.json()
+    const headers = json.nodes.find((n: { node_key: string }) => n.node_key === 'api').config.headers
+    expect(headers[0].value).toBe(SECRET_MASK)
+    expect(JSON.stringify(json)).not.toContain('STORED')
   })
 })

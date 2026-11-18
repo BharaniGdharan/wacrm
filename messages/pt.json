@@ -1502,7 +1502,55 @@
         "uploadFailed": "Falha ao enviar o arquivo.",
         "fileTooLarge": "O arquivo tem {size} MB — o limite é 16 MB.",
         "defaultOptionTitle": "Opção",
-        "optionN": "Opção {n}"
+        "optionN": "Opção {n}",
+        "http": {
+          "requestTitle": "Requisição",
+          "importCurl": "Importar do cURL",
+          "methodLabel": "Método",
+          "urlLabel": "URL",
+          "placeholderHelp": "Os marcadores funcionam na URL, nos parâmetros, nos cabeçalhos e no corpo, e os valores são escapados automaticamente. Clique em um para copiar:",
+          "copyPlaceholder": "Copiar",
+          "copied": "{value} copiado",
+          "paramsTitle": "Parâmetros de consulta",
+          "addParam": "Adicionar parâmetro",
+          "paramKeyPlaceholder": "nome",
+          "headersTitle": "Cabeçalhos",
+          "headerKeyPlaceholder": "Nome do cabeçalho",
+          "headerValuePlaceholder": "Valor",
+          "secretValuePlaceholder": "Valor secreto",
+          "secretToggle": "Secreto",
+          "storedSecurely": "Armazenado com segurança",
+          "replaceSecret": "Substituir",
+          "addHeader": "Adicionar cabeçalho",
+          "remove": "Remover",
+          "secretHelp": "Ative Secreto para chaves de API e tokens. O valor é criptografado quando você salva o fluxo e nunca mais é exibido.",
+          "bodyTitle": "Corpo",
+          "bodyJson": "JSON",
+          "bodyForm": "Formulário",
+          "bodyText": "Texto",
+          "responseTitle": "Salvar da resposta",
+          "responseHelp": "Copie campos da resposta JSON para variáveis (caminho JSON → nome da variável). As próximas etapas podem usar essas variáveis.",
+          "mappingVarPlaceholder": "nome_variavel",
+          "addMapping": "Adicionar campo",
+          "statusVarLabel": "Salvar o código de status HTTP em uma variável (opcional)",
+          "onSuccess": "Em caso de sucesso (2xx), avançar para",
+          "onFailure": "Em caso de falha, avançar para",
+          "failureHelp": "Falha significa um código de status de erro, tempo esgotado (8 segundos), um redirecionamento ou um endereço privado bloqueado.",
+          "curlTitle": "Importar do cURL",
+          "curlDescription": "Cole um comando cURL, por exemplo da documentação da API ou do “Copiar como cURL” do navegador. O método, a URL, os parâmetros, os cabeçalhos e o corpo são preenchidos para você.",
+          "curlReplaceHint": "Depois de importar, substitua os valores fixos por marcadores (variáveis ou campos do contato).",
+          "curlImportButton": "Importar",
+          "cancel": "Cancelar",
+          "curlImported": "Requisição importada do cURL",
+          "curlErrorNoUrl": "Nenhuma URL encontrada no comando.",
+          "curlErrorQuote": "O comando tem uma aspa não fechada.",
+          "curlErrorEmpty": "Cole um comando cURL primeiro.",
+          "curlWarnMethod": "{method} não é suportado (apenas GET e POST). Verifique o método.",
+          "curlWarnMultipart": "Envio de arquivos (-F) não é suportado e foi ignorado.",
+          "curlWarnIgnored": "Opção ignorada: {option}.",
+          "curlWarnDropped": "Cabeçalhos do navegador removidos: {headers}.",
+          "curlWarnMultipleUrls": "Várias URLs encontradas; a primeira foi usada."
+        }
       },
       "categories": {
         "messaging": "Mensagens",
@@ -1549,6 +1597,10 @@
         "end": {
           "label": "Fim",
           "blurb": "Encerra o fluxo"
+        },
+        "http_fetch": {
+          "label": "Requisição de API",
+          "blurb": "Chama uma API e salva a resposta"
         }
       }
     },
@@ -1589,7 +1641,8 @@
       "modeAdd": "Adicionar",
       "modeRemove": "Remover",
       "tagPicked": "{mode} tag {tag}…",
-      "tagNone": "{mode} tag (nenhuma escolhida)"
+      "tagNone": "{mode} tag (nenhuma escolhida)",
+      "httpSaves": "{base} → {count, plural, =1 {# variável} other {# variáveis}}"
     },
     "header": {
       "backToFlows": "Voltar aos fluxos",
@@ -2689,7 +2742,18 @@
       "setTagNeedsTag": "O nó Marcar contato precisa de uma tag para aplicar.",
       "setTagNeedsNext": "O nó Marcar contato precisa apontar para um próximo nó.",
       "setTagMissingNext": "O nó Marcar contato aponta para um nó inexistente: \"{key}\".",
-      "unknownNodeType": "Tipo de nó desconhecido: \"{type}\"."
+      "unknownNodeType": "Tipo de nó desconhecido: \"{type}\".",
+      "httpNeedsMethod": "A requisição de API precisa de um método (GET ou POST).",
+      "httpNeedsUrl": "A requisição de API precisa de uma URL.",
+      "httpInvalidUrl": "A URL da requisição deve começar com http:// ou https://.",
+      "httpHeaderNeedsName": "O cabeçalho {n} tem um valor, mas não tem nome.",
+      "httpInvalidHeaderName": "O nome de cabeçalho \"{name}\" contém caracteres inválidos.",
+      "httpInvalidBodyType": "O tipo de corpo deve ser JSON, Formulário ou Texto.",
+      "httpBodyNotJson": "O corpo não é um JSON válido. Verifique aspas e vírgulas (os marcadores são tratados como texto).",
+      "httpMappingNeedsVar": "O campo de resposta {n} precisa de um nome de variável.",
+      "httpMappingNeedsPath": "O campo de resposta {n} precisa de um caminho JSON.",
+      "httpNeedsBranch": "A requisição de API precisa de um nó para o ramo \"{branch}\".",
+      "httpMissingBranch": "O ramo \"{branch}\" da requisição de API aponta para o nó inexistente \"{key}\"."
     },
     "automations": {
       "needsStep": "automações ativas precisam de pelo menos uma etapa",

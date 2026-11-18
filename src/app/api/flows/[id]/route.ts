@@ -4,6 +4,8 @@ import { requireRole, toErrorResponse } from '@/lib/auth/account'
 import { supabaseAdmin } from '@/lib/flows/admin-client'
 import { validateFlowForActivation } from '@/lib/flows/validate'
 import { MAX_FLOW_TIMEOUT_HOURS } from '@/lib/flows/types'
+import { maskSecretHeaders, sealSecretHeaders } from '@/lib/flows/http-secrets'
+import { encrypt } from '@/lib/whatsapp/encryption'
 import { getT } from '@/lib/i18n/translate'
 
 const t = getT('Api')
@@ -14,6 +16,9 @@ const t = getT('Api')
  *                          full node graph.
  * DELETE /api/flows/[id] — hard delete (RLS+CASCADE clean up nodes,
  *                          runs, events).
+ *
+ * Secret headers on "API request" (http_fetch) nodes are encrypted on
+ * PUT and masked on every response — see lib/flows/http-secrets.ts.
  *
  * All three require a signed-in caller who owns the flow. Flows is in
  * soft-GA — the beta gate that previously 404'd non-beta accounts is
@@ -70,7 +75,7 @@ export async function GET(
   if (!flow) {
     return NextResponse.json({ error: t('common.notFound') }, { status: 404 })
   }
-  return NextResponse.json({ flow, nodes: nodes ?? [] })
+  return NextResponse.json({ flow, nodes: maskSecretHeaders(nodes ?? []) })
 }
 
 interface PutBody {
@@ -148,9 +153,21 @@ export async function PUT(
     flowPatch.fallback_policy = body.fallback_policy
 
   if (body.nodes !== undefined) {
+    const nodesToWrite = body.nodes.some((n) => n.node_type === 'http_fetch')
+      ? sealSecretHeaders(
+          body.nodes,
+          (
+            await admin
+              .from('flow_nodes')
+              .select('node_key, node_type, config')
+              .eq('flow_id', id)
+          ).data ?? [],
+          encrypt,
+        )
+      : body.nodes
     const { error: graphErr } = await guard.supabase.rpc('replace_flow_graph', {
       p_flow_id: id,
-      p_nodes: body.nodes.map((n) => ({
+      p_nodes: nodesToWrite.map((n) => ({
         node_key: n.node_key,
         node_type: n.node_type,
         config: n.config,
@@ -182,7 +199,7 @@ export async function PUT(
       .eq('flow_id', id)
       .order('created_at', { ascending: true }),
   ])
-  return NextResponse.json({ flow, nodes: nodes ?? [] })
+  return NextResponse.json({ flow, nodes: maskSecretHeaders(nodes ?? []) })
 }
 
 function isValidFallbackPolicy(policy: unknown): boolean {
